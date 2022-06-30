@@ -5614,7 +5614,7 @@ let api = function Binance(options = {}) {
             Binance.options.balance_callback = callback;
             Binance.options.execution_callback = execution_callback ? callback : execution_callback; //This change is required to listen for Orders
             Binance.options.list_status_callback = list_status_callback;
-            const subscription = subscribe(Binance.options.listenKey, userDataHandler, reconnect);
+            const subscription = subscribe(Binance.options.listenKey, callback, reconnect);
             if (subscribed_callback) subscribed_callback(subscription.endpoint);
           },
           'POST'
