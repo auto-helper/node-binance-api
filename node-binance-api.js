@@ -715,6 +715,54 @@ let api = function Binance(options = {}) {
     });
     return ws;
   };
+  /**
+   * Used to subscribe to a single websocket endpoint
+   * @param {string} endpoint - endpoint to connect to
+   * @param {function} callback - the function to call when information is received
+   * @param {boolean} reconnect - whether to reconnect on disconnect
+   * @param {object} opened_callback - the function to call when opened
+   * @return {WebSocket} - websocket reference
+   */
+  const customSubscribe = function (endpoint, callback, reconnect = true, opened_callback = false) {
+    let httpsproxy = process.env.https_proxy || false;
+    let socksproxy = process.env.socks_proxy || false;
+    let ws = false;
+
+    if (socksproxy !== false) {
+      socksproxy = proxyReplacewithIp(socksproxy);
+      if (Binance.options.verbose) Binance.options.log('using socks proxy server ' + socksproxy);
+      let agent = new SocksProxyAgent({
+        protocol: parseProxy(socksproxy)[0],
+        host: parseProxy(socksproxy)[1],
+        port: parseProxy(socksproxy)[2],
+      });
+      ws = new WebSocket(endpoint, { agent: agent });
+    } else if (httpsproxy !== false) {
+      let config = url.parse(httpsproxy);
+      let agent = new HttpsProxyAgent(config);
+      if (Binance.options.verbose) Binance.options.log('using proxy server ' + agent);
+      ws = new WebSocket(endpoint, { agent: agent });
+    } else {
+      ws = new WebSocket(endpoint);
+    }
+
+    if (Binance.options.verbose) Binance.options.log('Subscribed to ' + endpoint);
+    ws.reconnect = Binance.options.reconnect;
+    ws.endpoint = endpoint;
+    ws.isAlive = false;
+    ws.on('open', handleSocketOpen.bind(ws, opened_callback));
+    ws.on('pong', handleSocketHeartbeat);
+    ws.on('error', handleSocketError);
+    ws.on('close', handleSocketClose.bind(ws, reconnect));
+    ws.on('message', data => {
+      try {
+        callback(JSON.parse(data));
+      } catch (error) {
+        Binance.options.log('Parse error: ' + error.message);
+      }
+    });
+    return ws;
+  };
 
   /**
    * Used to subscribe to a combined websocket endpoint
@@ -5765,6 +5813,9 @@ let api = function Binance(options = {}) {
        */
       subscribe: function (url, callback, reconnect = false) {
         return subscribe(url, callback, reconnect);
+      },
+      customSubscribe: function (url, callback, reconnect = true) {
+        return customSubscribe(url, callback, reconnect);
       },
 
       /**
