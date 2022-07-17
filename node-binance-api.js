@@ -5815,7 +5815,10 @@ let api = function Binance(options = {}) {
         return subscribe(url, callback, reconnect);
       },
       customSubscribe: function (url, callback, reconnect = true) {
-        return customSubscribe(url, callback, reconnect);
+        const reconnectFun = () => {
+          customSubscribe(url, callback, reconnectFun);
+        };
+        return customSubscribe(url, callback, reconnectFun);
       },
 
       /**
